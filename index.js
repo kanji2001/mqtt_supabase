@@ -67,6 +67,62 @@ app.post('/add-device', async (req, res) => {
   }
 });
 
+app.get('/device-info/:macaddress', async (req, res) => {
+  const { macaddress } = req.params;
+
+  try {
+
+    const { data: device, error: deviceError } = await supabase
+      .from('devicetable')
+      .select('userid')
+      .eq('macaddress', macaddress)
+      .single();
+
+    if (deviceError || !device) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+
+    const userid = device.userid;
+
+    // 2. Get user info
+    console.log('LOOKING FOR USER WITH ID:', userid);
+    const { data: users, error: userError } = await supabase
+      .from('usertable')
+      .select('id, name, common_name')
+      .eq('id', userid)
+      .limit(1);
+
+    if (userError || !users || users.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = users[0]; 
+    const { data: macs, error: macsError } = await supabase
+      .from('devicetable')
+      .select('macaddress')
+      .eq('userid', userid);
+
+    if (macsError) {
+      return res.status(500).json({ error: 'Failed to fetch MAC addresses' });
+    }
+
+    const macaddresses = macs.map(device => device.macaddress);
+
+    res.json({
+      userid: user.id,
+      name: user.name,
+      common_name: user.common_name,
+      macaddresses
+    });
+
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
 app.listen(process.env.PORT, () => {
   console.log(`✅ Server running on http://localhost:${process.env.PORT}`);
 });
