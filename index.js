@@ -79,6 +79,7 @@ app.get('/device-info/:macaddress', async (req, res) => {
   const { macaddress } = req.params;
 
   try {
+    // Step 1: Get the device's associated user ID
     const { data: device } = await supabase
       .from('devicetable')
       .select('userid')
@@ -91,9 +92,10 @@ app.get('/device-info/:macaddress', async (req, res) => {
 
     const userid = device.userid;
 
+    // Step 2: Get the user details including certs
     const { data: users } = await supabase
       .from('usertable')
-      .select('id, name, common_name')
+      .select('id, name, common_name, client_key, client_crt')
       .eq('id', userid)
       .limit(1);
 
@@ -103,6 +105,7 @@ app.get('/device-info/:macaddress', async (req, res) => {
 
     const user = users[0];
 
+    // Step 3: Get all MAC addresses linked to the user
     const { data: macs } = await supabase
       .from('devicetable')
       .select('macaddress')
@@ -110,10 +113,13 @@ app.get('/device-info/:macaddress', async (req, res) => {
 
     const macaddresses = macs.map(device => device.macaddress);
 
+    // Step 4: Send response with certs included
     res.json({
       userid: user.id,
       name: user.name,
       common_name: user.common_name,
+      // client_key: user.client_key,
+      // client_crt: user.client_crt,
       macaddresses
     });
 
@@ -122,6 +128,9 @@ app.get('/device-info/:macaddress', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+
+
 
 // POST /generate-certificate
 app.post('/generate-certificate', async (req, res) => {
@@ -187,6 +196,38 @@ app.post('/generate-certificate', async (req, res) => {
     res.status(500).json({ error: 'Certificate generation or DB update failed' });
   }
 });
+
+
+app.get('/user-certificate/:common_name', async (req, res) => {
+  const { common_name } = req.params;
+
+  try {
+    const { data: users, error } = await supabase
+      .from('usertable')
+      .select('id, name, common_name, client_key, client_crt')
+      .eq('common_name', common_name)
+      .limit(1);
+
+    if (error || !users || users.length === 0) {
+      return res.status(404).json({ error: 'User with this common_name not found' });
+    }
+
+    const user = users[0];
+    
+
+    res.json({
+      userid: user.id,
+      name: user.name,
+      common_name: user.common_name,
+      client_key: user.client_key,
+      client_crt: user.client_crt
+    });
+  } catch (err) {
+    console.error('Error fetching certificate by common_name:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 
 
 function execPromise(command) {
