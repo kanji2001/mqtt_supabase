@@ -79,10 +79,10 @@ exports.getDeviceInfo = async (macaddress) => {
   if (caErr || !caRow) throw new Error("CA cert not found");
 
   return {
-    userid: users[0].id,
-    name: users[0].name,
+    // userid: users[0].id,
+    // name: users[0].name,
     common_name: users[0].common_name,
-    macaddresses: macs.map((device) => device.macaddress),
+    macaddresses: macaddress,
     ca_cert: caRow.ca_cert,
     client_key: users[0].client_key,
     client_crt: users[0].client_crt,
