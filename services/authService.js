@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const supabase = require('../config/supabase');
 
-async function loginUser({ common_name, password, mac_address }) {
+async function loginUser({ common_name, password }) {
   // Step 1: Find user
   const { data: user, error } = await supabase
     .from('usertable')
@@ -15,12 +15,9 @@ async function loginUser({ common_name, password, mac_address }) {
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) throw new Error('Invalid credentials');
 
-  // Step 3: Validate MAC address match
-  if (user.mac_address && user.mac_address !== mac_address) {
-    throw new Error('MAC address does not match registered device');
-  }
+ 
 
-  // Step 4: Fetch CA cert
+  
   const { data: ca, error: caErr } = await supabase
     .from('ca')
     .select('ca_cert')
